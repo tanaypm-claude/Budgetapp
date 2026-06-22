@@ -26,6 +26,23 @@ Run the tests with **⌘U**, or:
 xcodebuild test -scheme Budgetapp -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
+### Command-line shortcuts (macOS)
+
+A `Makefile` wraps the common `xcodebuild` invocations — nothing runs
+automatically:
+
+```bash
+make build       # build for the simulator
+make test        # build + run the test suite
+make run         # build, boot the simulator, install and launch
+make screenshot  # save a PNG of the booted simulator under build/
+make help        # list all targets
+```
+
+Override the device with `make run SIMULATOR='iPhone 16 Pro'`.
+`scripts/run-sim.sh [device]` does the whole build → boot → launch →
+screenshot loop in one shot.
+
 ## Architecture
 
 Layered, with pure logic kept free of SwiftData so it is fast to test.
