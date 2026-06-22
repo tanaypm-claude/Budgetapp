@@ -1,0 +1,23 @@
+# Xcode / Swift
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+.swiftpm/
+.build/
+
+# macOS
+.DS_Store
+
+# User-specific Xcode settings (keep shared schemes)
+Budgetapp.xcodeproj/project.xcworkspace/xcuserdata/
+Budgetapp.xcodeproj/xcuserdata/
+
+# Misc
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM

@@ -1,0 +1,12 @@
+Date,Merchant,Description,Debit,Credit,Account
+2026-06-01,Swiggy,SWIGGY BANGALORE ORDER 88213,450.00,,Primary Bank
+2026-06-02,Acme Payroll,SALARY JUNE,,95000.00,Primary Bank
+2026-06-03,Uber,UBER TRIP 4471,320.00,,Primary Bank
+2026-06-04,BigBasket,BIGBASKET GROCERIES,2150.00,,Primary Bank
+2026-06-05,Netflix,NETFLIX MONTHLY,649.00,,Credit Card
+2026-06-06,Zomato,ZOMATO ORDER 22190,560.00,,Primary Bank
+2026-06-08,Electricity Board,BESCOM ELECTRICITY BILL,1450.00,,Primary Bank
+2026-06-10,Apollo Pharmacy,APOLLO PHARMACY,720.00,,Primary Bank
+2026-06-12,Ola,OLA CABS 7781,240.00,,Primary Bank
+2026-06-14,Amazon,AMAZON ORDER 991002,1899.00,,Credit Card
+2026-06-15,Mystery Merchant,POS 4471 UNKNOWN,375.00,,Primary Bank
