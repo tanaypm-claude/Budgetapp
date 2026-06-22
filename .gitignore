@@ -21,3 +21,8 @@ Budgetapp.xcodeproj/xcuserdata/
 *.ipa
 *.dSYM.zip
 *.dSYM
+
+# Generated export/review artifacts (delivered out-of-band, not repo content)
+Budgetapp-claude-source.md
+Budgetapp-claude.tar.gz
+*.tar.gz
