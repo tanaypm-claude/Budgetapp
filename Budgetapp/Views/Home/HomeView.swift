@@ -26,7 +26,7 @@ struct HomeView: View {
 
     private var categorySummaries: [CategorySpendSummary] {
         BudgetCalculator.categorySummaries(
-            categories: activeCategories.map { ($0.id, $0.monthlyBudget) },
+            categories: activeCategories.map { (id: $0.id, budget: $0.monthlyBudget) },
             month: referenceMonth,
             transactions: transactions
         )
