@@ -116,9 +116,12 @@ enum PDFStatementParser {
     }
 
     private static let moneyRegex: NSRegularExpression = {
-        // Optional currency sign, grouped integer part, exactly 2 decimals,
-        // optional trailing CR/DR. Requiring decimals avoids matching ref numbers.
-        let pattern = #"[₹$€£]?\(?-?\d{1,3}(?:[,]\d{2,3})*(?:\.\d{2})\)?\s?(?:CR|DR|Cr|Dr|cr|dr)?"#
+        // Optional currency sign / parens / sign, grouped or plain integer part,
+        // optional 1-2 decimals, optional trailing CR/DR. Decimals are optional so
+        // whole-rupee statement amounts ("450", "1,200") parse too. Tokens are read
+        // only from the post-date portion of a line, and the preview lets the user
+        // correct any row, which keeps stray reference numbers manageable.
+        let pattern = #"[₹$€£]?\(?-?\d[\d,]*(?:\.\d{1,2})?\)?\s?(?:CR|DR|Cr|Dr|cr|dr)?"#
         return try! NSRegularExpression(pattern: pattern)
     }()
 

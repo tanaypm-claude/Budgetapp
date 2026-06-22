@@ -16,6 +16,8 @@ struct TransactionsView: View {
     @State private var selection = Set<UUID>()
     @State private var editMode: EditMode = .inactive
     @State private var showingBulkCategoryPicker = false
+    @State private var transactionToDelete: Transaction?
+    @State private var showingBulkDeleteConfirm = false
 
     private var lookups: Lookups { Lookups(categories: categories, accounts: accounts) }
 
@@ -68,6 +70,16 @@ struct TransactionsView: View {
                     bulkMove(to: category)
                 }
             }
+            .confirmationDialog("Delete this transaction?", isPresented: Binding(
+                get: { transactionToDelete != nil }, set: { if !$0 { transactionToDelete = nil } }
+            ), titleVisibility: .visible, presenting: transactionToDelete) { txn in
+                Button("Delete", role: .destructive) { delete(txn) }
+                Button("Cancel", role: .cancel) {}
+            }
+            .confirmationDialog("Delete \(selection.count) transaction(s)?", isPresented: $showingBulkDeleteConfirm, titleVisibility: .visible) {
+                Button("Delete \(selection.count)", role: .destructive) { bulkDelete() }
+                Button("Cancel", role: .cancel) {}
+            }
             .safeAreaInset(edge: .bottom) {
                 if editMode == .active && !selection.isEmpty {
                     bulkActionBar
@@ -114,8 +126,8 @@ struct TransactionsView: View {
             }
         }
         .listRowBackground(Theme.paper)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) { delete(txn) } label: {
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) { transactionToDelete = txn } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
@@ -144,7 +156,7 @@ struct TransactionsView: View {
                 bulkMarkReviewed()
             } label: { Label("Reviewed", systemImage: "checkmark.circle") }
             Button(role: .destructive) {
-                bulkDelete()
+                showingBulkDeleteConfirm = true
             } label: { Label("Delete", systemImage: "trash") }
         }
         .font(.ledgerCaption())

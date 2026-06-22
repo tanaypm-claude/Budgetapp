@@ -119,8 +119,9 @@ struct AccountEditorView: View {
 
     private func deleteAccount() {
         if case let .edit(account) = mode {
-            context.delete(account)
-            try? context.save()
+            // Clears references on transactions/recurring/rules so nothing is
+            // left pointing at a deleted account.
+            DeletionService.deleteAccount(account, context: context)
             Haptics.warning()
             dismiss()
         }

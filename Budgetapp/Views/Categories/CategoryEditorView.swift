@@ -109,8 +109,9 @@ struct CategoryEditorView: View {
 
     private func deleteCategory() {
         if case let .edit(category) = mode {
-            context.delete(category)
-            try? context.save()
+            // Clears references on transactions/recurring/rules so nothing is
+            // left pointing at a deleted category.
+            DeletionService.deleteCategory(category, context: context)
             Haptics.warning()
             dismiss()
         }

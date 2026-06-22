@@ -10,11 +10,14 @@ struct TransactionSignature: Hashable {
     let day: Date
     let amountKey: String
     let merchantKey: String
+    /// Same merchant/date/amount on *different* accounts are not duplicates.
+    let accountKey: String
 
-    init(date: Date, amount: Decimal, merchant: String, calendar: Calendar = .current) {
+    init(date: Date, amount: Decimal, merchant: String, accountId: UUID? = nil, calendar: Calendar = .current) {
         self.day = calendar.startOfDay(for: date)
         self.amountKey = TransactionSignature.amountKey(amount)
         self.merchantKey = TransactionSignature.normalize(merchant)
+        self.accountKey = accountId?.uuidString ?? "no-account"
     }
 
     static func amountKey(_ amount: Decimal) -> String {
@@ -53,6 +56,7 @@ enum DeduplicationService {
                 date: date,
                 amount: row.amount,
                 merchant: row.displayName,
+                accountId: row.resolvedAccountId,
                 calendar: calendar
             )
             if seen.contains(signature) {
@@ -78,6 +82,7 @@ enum DeduplicationService {
                 date: txn.date,
                 amount: txn.amount,
                 merchant: txn.merchant.isEmpty ? txn.narration : txn.merchant,
+                accountId: txn.accountId,
                 calendar: calendar
             )
         })

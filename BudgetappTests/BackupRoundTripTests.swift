@@ -78,4 +78,31 @@ final class BackupRoundTripTests: XCTestCase {
         XCTAssertEqual(snapshot.transactions[0].merchant, "Swiggy")
         XCTAssertEqual(snapshot.transactions[0].amount, Decimal(450))
     }
+
+    // MARK: Corrupt / mismatched backups fail loudly (and don't wipe data)
+
+    func testDecodeRejectsGarbage() {
+        let garbage = Data("this is not json".utf8)
+        XCTAssertThrowsError(try BackupCoder.decode(garbage))
+    }
+
+    func testDecodeRejectsMismatchedJSON() {
+        // Valid JSON, wrong shape for a BackupSnapshot.
+        let mismatched = Data(#"{"foo": 1, "bar": [1,2,3]}"#.utf8)
+        XCTAssertThrowsError(try BackupCoder.decode(mismatched))
+    }
+
+    func testRestoreFromCorruptDataThrowsAndKeepsExistingData() throws {
+        let context = makeContext()
+        SeedData.seedDefaults(context: context)
+        try context.save()
+        let categoriesBefore = try context.fetch(FetchDescriptor<Category>()).count
+        XCTAssertGreaterThan(categoriesBefore, 0)
+
+        // A failed restore must throw before deleting anything.
+        XCTAssertThrowsError(try BackupService.restore(from: Data("nope".utf8), context: context))
+
+        let categoriesAfter = try context.fetch(FetchDescriptor<Category>()).count
+        XCTAssertEqual(categoriesAfter, categoriesBefore, "Existing data is untouched when the backup is invalid")
+    }
 }

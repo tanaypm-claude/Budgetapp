@@ -10,6 +10,7 @@ struct RecurringListView: View {
 
     @State private var showingEditor = false
     @State private var showingDetected = false
+    @State private var paymentToDelete: RecurringPayment?
 
     private var lookups: Lookups { Lookups(categories: categories, accounts: accounts) }
 
@@ -47,6 +48,14 @@ struct RecurringListView: View {
         .sheet(isPresented: $showingDetected) {
             DetectedRecurringView(transactions: transactions, lookups: lookups)
         }
+        .confirmationDialog("Delete this recurring payment?", isPresented: Binding(
+            get: { paymentToDelete != nil }, set: { if !$0 { paymentToDelete = nil } }
+        ), titleVisibility: .visible, presenting: paymentToDelete) { payment in
+            Button("Delete", role: .destructive) {
+                context.delete(payment); try? context.save(); Haptics.warning()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
     private var list: some View {
@@ -69,9 +78,9 @@ struct RecurringListView: View {
                             .opacity(payment.isActive ? 1 : 0.5)
                     }
                     .listRowBackground(Theme.surface)
-                    .swipeActions(edge: .trailing) {
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            context.delete(payment); try? context.save(); Haptics.tap()
+                            paymentToDelete = payment
                         } label: { Label("Delete", systemImage: "trash") }
                     }
                     .swipeActions(edge: .leading) {

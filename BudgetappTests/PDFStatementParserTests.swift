@@ -66,4 +66,49 @@ final class PDFStatementParserTests: XCTestCase {
         XCTAssertEqual(rows.count, 1)
         XCTAssertEqual(rows[0].amount, Decimal(649))
     }
+
+    // MARK: Amount variants (no decimals, CR/DR, negatives, parentheses)
+
+    func testParsesIntegerAmountWithoutDecimals() {
+        let rows = PDFStatementParser.parse(text: "15-Jun-2026  NETFLIX SUBSCRIPTION  649")
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].amount, Decimal(649))
+    }
+
+    func testParsesGroupedIntegerAmount() {
+        let rows = PDFStatementParser.parse(text: "15-Jun-2026  APARTMENT RENT  1,200")
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].amount, Decimal(1200))
+    }
+
+    func testCreditMarkerOnIntegerIsIncome() {
+        let rows = PDFStatementParser.parse(text: "01/06/2026  SALARY CREDIT  95000 CR  107340")
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].type, .income)
+        XCTAssertEqual(rows[0].amount, Decimal(95000))
+    }
+
+    func testDebitMarkerOnIntegerIsExpense() {
+        let rows = PDFStatementParser.parse(text: "01/06/2026  ATM WITHDRAWAL  500 DR  4500")
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].type, .expense)
+        XCTAssertEqual(rows[0].amount, Decimal(500))
+    }
+
+    func testNegativeAmountMagnitude() {
+        let rows = PDFStatementParser.parse(text: "15-Jun-2026  SERVICE FEE  -250.00")
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].amount, Decimal(250))
+    }
+
+    func testParenthesesAmountMagnitude() {
+        let rows = PDFStatementParser.parse(text: "15-Jun-2026  REVERSAL  (250.00)")
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].amount, Decimal(250))
+    }
+
+    func testMonetaryTokenParsesBareInteger() {
+        let tokens = PDFStatementParser.monetaryTokens(in: "PURCHASE 450")
+        XCTAssertTrue(tokens.contains { $0.value == Decimal(450) })
+    }
 }

@@ -53,4 +53,40 @@ final class DeduplicationTests: XCTestCase {
     func testSignatureMagnitudeIgnoresSign() {
         XCTAssertEqual(TransactionSignature.amountKey(Decimal(-450)), TransactionSignature.amountKey(Decimal(450)))
     }
+
+    // MARK: Account-aware fingerprint
+
+    func testSameTxnDifferentAccountsNotDuplicate() {
+        let accountA = UUID()
+        let accountB = UUID()
+        let existing: Set<TransactionSignature> = [
+            TransactionSignature(date: date("2026-06-01"), amount: Decimal(450), merchant: "Swiggy", accountId: accountA)
+        ]
+        let parsed = [
+            ParsedTransaction(date: date("2026-06-01"), merchant: "Swiggy", amount: Decimal(450), resolvedAccountId: accountB)
+        ]
+        let result = DeduplicationService.flagDuplicates(in: parsed, existing: existing)
+        XCTAssertFalse(result[0].isDuplicate, "Same merchant/date/amount on a different account is not a duplicate")
+    }
+
+    func testSameTxnSameAccountIsDuplicate() {
+        let account = UUID()
+        let existing: Set<TransactionSignature> = [
+            TransactionSignature(date: date("2026-06-01"), amount: Decimal(450), merchant: "Swiggy", accountId: account)
+        ]
+        let parsed = [
+            ParsedTransaction(date: date("2026-06-01"), merchant: "Swiggy", amount: Decimal(450), resolvedAccountId: account)
+        ]
+        let result = DeduplicationService.flagDuplicates(in: parsed, existing: existing)
+        XCTAssertTrue(result[0].isDuplicate)
+    }
+
+    func testSignaturesFromTransactionsCarryAccount() {
+        let accountA = UUID()
+        let txn = Transaction(date: date("2026-06-01"), merchant: "Swiggy", amount: Decimal(450),
+                              type: .expense, accountId: accountA)
+        let set = DeduplicationService.signatures(for: [txn])
+        XCTAssertTrue(set.contains(TransactionSignature(date: date("2026-06-01"), amount: Decimal(450), merchant: "Swiggy", accountId: accountA)))
+        XCTAssertFalse(set.contains(TransactionSignature(date: date("2026-06-01"), amount: Decimal(450), merchant: "Swiggy", accountId: UUID())))
+    }
 }

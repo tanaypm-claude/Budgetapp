@@ -8,6 +8,7 @@ struct RulesListView: View {
     @Query(sort: \Account.sortOrder) private var accounts: [Account]
 
     @State private var showingEditor = false
+    @State private var ruleToDelete: ImportRule?
 
     private var lookups: Lookups { Lookups(categories: categories, accounts: accounts) }
 
@@ -32,6 +33,14 @@ struct RulesListView: View {
         .sheet(isPresented: $showingEditor) {
             NavigationStack { RuleEditorView(mode: .create) }
         }
+        .confirmationDialog("Delete this rule?", isPresented: Binding(
+            get: { ruleToDelete != nil }, set: { if !$0 { ruleToDelete = nil } }
+        ), titleVisibility: .visible, presenting: ruleToDelete) { rule in
+            Button("Delete", role: .destructive) {
+                context.delete(rule); try? context.save(); Haptics.warning()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
     private var list: some View {
@@ -44,9 +53,9 @@ struct RulesListView: View {
                         RuleRow(rule: rule, lookups: lookups)
                     }
                     .listRowBackground(Theme.surface)
-                    .swipeActions(edge: .trailing) {
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            context.delete(rule); try? context.save(); Haptics.tap()
+                            ruleToDelete = rule
                         } label: { Label("Delete", systemImage: "trash") }
                     }
                 }

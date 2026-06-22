@@ -56,19 +56,28 @@ struct ColumnMapping: Equatable {
 
     func header(for role: CSVColumnRole) -> String? { assignments[role] }
 
-    /// A mapping is usable if there's a date and at least one amount source.
+    /// A mapping is usable only with a date, a name (merchant or description),
+    /// and at least one amount source. Enforced before preview/commit.
     var isValid: Bool {
+        let hasDate = assignments[.date] != nil
+        let hasName = assignments[.merchant] != nil || assignments[.description] != nil
         let hasAmountSource = assignments[.amount] != nil
             || assignments[.debit] != nil
             || assignments[.credit] != nil
-        return hasAmountSource
+        return hasDate && hasName && hasAmountSource
     }
 
     var validationMessage: String? {
-        if !isValid {
-            return "Map at least an Amount column, or a Debit and/or Credit column."
+        guard !isValid else { return nil }
+        var missing: [String] = []
+        if assignments[.date] == nil { missing.append("a Date column") }
+        if assignments[.merchant] == nil && assignments[.description] == nil {
+            missing.append("a Merchant or Description column")
         }
-        return nil
+        if assignments[.amount] == nil && assignments[.debit] == nil && assignments[.credit] == nil {
+            missing.append("an Amount column (or Debit / Credit)")
+        }
+        return "Map " + missing.joined(separator: ", ") + " to continue."
     }
 
     /// Best-effort auto-detection from header names.

@@ -23,10 +23,11 @@ struct ImportPreviewView: View {
         _rows = State(initialValue: preview.transactions)
     }
 
-    private var lookups: Lookups { Lookups(categories: categories, accounts: accounts) }
-    private var selectedCount: Int { rows.filter { $0.isSelectedForImport && !$0.isDuplicate }.count }
+    /// Rows that will actually be written: selected, not duplicate, and dated.
+    private var selectedCount: Int { rows.filter { $0.isSelectedForImport && !$0.isDuplicate && $0.date != nil }.count }
     private var duplicateCount: Int { rows.filter(\.isDuplicate).count }
     private var reviewCount: Int { rows.filter { $0.isSelectedForImport && $0.needsReview && !$0.isDuplicate }.count }
+    private var missingDateCount: Int { rows.filter { $0.isSelectedForImport && !$0.isDuplicate && $0.date == nil }.count }
 
     var body: some View {
         Group {
@@ -74,6 +75,11 @@ struct ImportPreviewView: View {
             }
             .frame(maxWidth: .infinity)
             .listRowBackground(Theme.surfaceSunken)
+            if missingDateCount > 0 {
+                Label("\(missingDateCount) row(s) need a date before they can be saved.",
+                      systemImage: "calendar.badge.exclamationmark")
+                    .font(.ledgerCaption()).foregroundStyle(Theme.negative)
+            }
         }
     }
 
@@ -98,7 +104,11 @@ struct ImportPreviewView: View {
     private var rowsSection: some View {
         Section("\(rows.count) rows") {
             ForEach($rows) { $row in
-                ImportPreviewRow(row: $row, lookups: lookups)
+                ImportPreviewRow(
+                    row: $row,
+                    categories: categories.filter(\.isActive),
+                    accounts: accounts.filter(\.isActive)
+                )
             }
         }
     }
@@ -124,48 +134,97 @@ struct ImportPreviewView: View {
     }
 }
 
-/// A single editable preview row.
+/// A single editable preview row: include toggle plus inline corrections for
+/// date, type, category and account. Rows with issues are visually flagged and
+/// undated rows can never be silently saved.
 struct ImportPreviewRow: View {
     @Binding var row: ParsedTransaction
-    let lookups: Lookups
+    let categories: [Category]
+    let accounts: [Account]
+
+    private var dateMissing: Bool { row.date == nil }
+    private var willImport: Bool { row.isSelectedForImport && !row.isDuplicate && !dateMissing }
+
+    private var dateBinding: Binding<Date> {
+        Binding(
+            get: { row.date ?? Date() },
+            set: { row.date = $0; recompute() }
+        )
+    }
 
     var body: some View {
-        HStack(spacing: Theme.Space.md) {
-            Button {
-                row.isSelectedForImport.toggle()
-                Haptics.selection()
-            } label: {
-                Image(systemName: row.isSelectedForImport && !row.isDuplicate ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(row.isSelectedForImport && !row.isDuplicate ? Theme.positive : Theme.inkFaint)
-            }
-            .buttonStyle(.plain)
-            .disabled(row.isDuplicate)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.displayName).font(.ledgerBody().weight(.medium))
-                    .foregroundStyle(row.isDuplicate ? Theme.inkFaint : Theme.ink).lineLimit(1)
-                HStack(spacing: 6) {
-                    Text(row.date?.shortDay ?? "No date")
-                    Text("·")
-                    Text(lookups.categoryName(row.resolvedCategoryId))
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            HStack(spacing: Theme.Space.md) {
+                Button {
+                    if !row.isDuplicate { row.isSelectedForImport.toggle(); Haptics.selection() }
+                } label: {
+                    Image(systemName: willImport ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(willImport ? Theme.positive : Theme.inkFaint)
                 }
-                .font(.ledgerCaption()).foregroundStyle(Theme.inkSecondary).lineLimit(1)
+                .buttonStyle(.plain)
+                .disabled(row.isDuplicate)
+                .accessibilityLabel(willImport ? "Included" : "Excluded")
 
-                if !row.issues.isEmpty {
-                    Text(row.issues.joined(separator: " · "))
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(row.isDuplicate ? Theme.inkFaint : Theme.warning)
-                        .lineLimit(2)
-                }
+                Text(row.displayName)
+                    .font(.ledgerBody().weight(.medium))
+                    .foregroundStyle(row.isDuplicate ? Theme.inkFaint : Theme.ink)
+                    .lineLimit(1)
+                Spacer()
+                Text(CurrencyFormatter.signed(row.amount, type: row.type))
+                    .font(.ledgerNumber(.callout, weight: .semibold))
+                    .foregroundStyle(row.type == .income ? Theme.positive : Theme.ink)
+                    .strikethrough(row.isDuplicate)
             }
-            Spacer()
-            Text(CurrencyFormatter.signed(row.amount, type: row.type))
-                .font(.ledgerNumber(.callout, weight: .semibold))
-                .foregroundStyle(row.type == .income ? Theme.positive : Theme.ink)
-                .strikethrough(row.isDuplicate)
+
+            DatePicker("Date", selection: dateBinding, displayedComponents: .date)
+                .font(.ledgerCaption())
+
+            Picker("Type", selection: $row.type) {
+                ForEach(TransactionType.allCases) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
+
+            Picker("Category", selection: $row.resolvedCategoryId) {
+                Text("Needs review").tag(UUID?.none)
+                ForEach(categories) { Label($0.name, systemImage: $0.symbol).tag(Optional($0.id)) }
+            }
+            .font(.ledgerCaption())
+
+            Picker("Account", selection: $row.resolvedAccountId) {
+                Text("Default").tag(UUID?.none)
+                ForEach(accounts) { Label($0.name, systemImage: $0.type.symbolName).tag(Optional($0.id)) }
+            }
+            .font(.ledgerCaption())
+
+            if dateMissing {
+                Label("Date required — set a date to import this row", systemImage: "calendar.badge.exclamationmark")
+                    .font(.ledgerCaption()).foregroundStyle(Theme.negative)
+            } else if !row.issues.isEmpty {
+                Label(row.issues.joined(separator: " · "),
+                      systemImage: row.isDuplicate ? "doc.on.doc" : "exclamationmark.triangle")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(row.isDuplicate ? Theme.inkFaint : Theme.warning)
+                    .lineLimit(2)
+            }
         }
-        .padding(.vertical, 2)
-        .opacity(row.isDuplicate ? 0.55 : 1)
+        .padding(.vertical, 4)
+        .opacity(row.isDuplicate ? 0.6 : 1)
+        .overlay(alignment: .leading) {
+            if (dateMissing || row.needsReview) && !row.isDuplicate {
+                Rectangle().fill(dateMissing ? Theme.negative : Theme.warning).frame(width: 3)
+            }
+        }
+        .onChange(of: row.resolvedCategoryId) { _, _ in recompute() }
+    }
+
+    /// Keep `issues` / `needsReview` in sync after inline edits so a corrected
+    /// row is committed as reviewed (and an undated row stays flagged).
+    private func recompute() {
+        var issues = row.issues.filter { $0 != "No category — needs review" && $0 != "Unrecognised date" }
+        if row.date == nil { issues.append("Unrecognised date") }
+        if row.resolvedCategoryId == nil { issues.append("No category — needs review") }
+        row.issues = issues
+        row.needsReview = row.date == nil || row.resolvedCategoryId == nil
     }
 }

@@ -101,4 +101,56 @@ final class ImportServiceTests: XCTestCase {
         let parsed = PDFStatementParser.parse(text: "")
         XCTAssertTrue(parsed.isEmpty)
     }
+
+    // MARK: Invalid mapping is rejected before preview
+
+    func testIncompleteMappingThrows() {
+        let service = ImportService(context: context)
+        // Missing the date column entirely → must not reach preview.
+        let badMapping = ColumnMapping(assignments: [.merchant: "Merchant", .amount: "Amount"])
+        XCTAssertThrowsError(try service.makeCSVPreview(table: table(), mapping: badMapping, filename: "x.csv"))
+        // A complete mapping does not throw.
+        XCTAssertNoThrow(try service.makeCSVPreview(table: table(), mapping: mapping(), filename: "x.csv"))
+    }
+
+    // MARK: Bad dates are never committed as "today"
+
+    func testUnparseableDateRowIsNotSavedAsToday() throws {
+        let service = ImportService(context: context)
+        let badDateTable = CSVTable(
+            headers: ["Date", "Merchant", "Amount"],
+            rows: [
+                ["2026-06-01", "Swiggy Bangalore", "-450"], // good
+                ["not-a-date", "Mystery Cafe", "-200"]       // bad date
+            ]
+        )
+        let preview = try service.makeCSVPreview(table: badDateTable, mapping: mapping(), filename: "x.csv")
+        // The bad-date row is parsed but undated and flagged.
+        XCTAssertTrue(preview.transactions.contains { $0.date == nil })
+
+        let batch = try service.commit(preview: preview, defaultAccountId: nil)
+        let saved = try context.fetch(FetchDescriptor<Transaction>())
+
+        // Only the good row is persisted; the undated row is skipped.
+        XCTAssertEqual(saved.count, 1)
+        XCTAssertEqual(batch.rowCount, 1)
+        // Critically: nothing was silently saved with today's date.
+        let today = Calendar.current.startOfDay(for: .now)
+        XCTAssertFalse(saved.contains { Calendar.current.startOfDay(for: $0.date) == today })
+        XCTAssertFalse(saved.contains { $0.merchant.contains("Mystery") })
+    }
+
+    func testRowWithCorrectedDateIsSaved() throws {
+        let service = ImportService(context: context)
+        let badDateTable = CSVTable(
+            headers: ["Date", "Merchant", "Amount"],
+            rows: [["not-a-date", "Mystery Cafe", "-200"]]
+        )
+        var preview = try service.makeCSVPreview(table: badDateTable, mapping: mapping(), filename: "x.csv")
+        // Simulate the user correcting the date in the preview UI.
+        preview.transactions[0].date = ValueParsing.parseDate("2026-06-09")
+        let batch = try service.commit(preview: preview, defaultAccountId: nil)
+        XCTAssertEqual(batch.rowCount, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Transaction>()).count, 1)
+    }
 }

@@ -22,6 +22,7 @@ struct MoreView: View {
                     NavigationLink { CategoriesView() } label: { moreRow("tag.fill", "Categories", tint: Theme.accent) }
                     NavigationLink { AccountsListView() } label: { moreRow("building.columns.fill", "Accounts", tint: Color(hex: "#4C8CB5")) }
                     NavigationLink { RecurringListView() } label: { moreRow("calendar.badge.clock", "Recurring", tint: Color(hex: "#9C6B9E")) }
+                    NavigationLink { ProjectsView() } label: { moreRow("folder.fill", "Projects", tint: Color(hex: "#5E7CE2")) }
                     NavigationLink { RulesListView() } label: { moreRow("wand.and.stars", "Import Rules", tint: Color(hex: "#6BB0A4")) }
                 }
 

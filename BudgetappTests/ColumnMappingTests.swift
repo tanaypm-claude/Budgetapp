@@ -44,4 +44,34 @@ final class ColumnMappingTests: XCTestCase {
         XCTAssertEqual(mapping.header(for: .date), "DATE")
         XCTAssertEqual(mapping.header(for: .amount), "AMOUNT")
     }
+
+    // MARK: Validity (date + name + amount source all required)
+
+    func testValidMappingNeedsDateNameAndAmount() {
+        let mapping = ColumnMapping(assignments: [.date: "Date", .merchant: "Merchant", .amount: "Amount"])
+        XCTAssertTrue(mapping.isValid)
+        XCTAssertNil(mapping.validationMessage)
+    }
+
+    func testInvalidWithoutDate() {
+        let mapping = ColumnMapping(assignments: [.merchant: "Merchant", .amount: "Amount"])
+        XCTAssertFalse(mapping.isValid)
+        XCTAssertTrue(mapping.validationMessage?.contains("Date") ?? false)
+    }
+
+    func testInvalidWithoutMerchantOrDescription() {
+        let mapping = ColumnMapping(assignments: [.date: "Date", .amount: "Amount"])
+        XCTAssertFalse(mapping.isValid)
+        XCTAssertTrue(mapping.validationMessage?.contains("Merchant") ?? false)
+    }
+
+    func testInvalidWithoutAmountSource() {
+        let mapping = ColumnMapping(assignments: [.date: "Date", .merchant: "Merchant"])
+        XCTAssertFalse(mapping.isValid)
+    }
+
+    func testDescriptionSatisfiesNameRequirement() {
+        let mapping = ColumnMapping(assignments: [.date: "Date", .description: "Narration", .debit: "Withdrawal"])
+        XCTAssertTrue(mapping.isValid)
+    }
 }

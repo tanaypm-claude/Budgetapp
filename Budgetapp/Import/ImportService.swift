@@ -33,13 +33,18 @@ struct ImportService {
         return CSVSession(table: table, mapping: mapping, filename: url.lastPathComponent)
     }
 
-    /// Build a preview from a confirmed CSV mapping.
+    /// Build a preview from a confirmed CSV mapping. Throws when the mapping is
+    /// incomplete so an under-specified import can never reach preview/commit.
     func makeCSVPreview(table: CSVTable, mapping: ColumnMapping, filename: String) throws -> ImportPreview {
+        guard mapping.isValid else {
+            throw ImportError.custom(mapping.validationMessage ?? "The column mapping is incomplete.")
+        }
         let parsed = CSVTransactionMapper.map(table: table, mapping: mapping)
         guard !parsed.isEmpty else { throw ImportError.noTransactionsFound }
         let resolved = resolve(parsed)
-        var warnings: [String] = []
-        if !mapping.isValid, let message = mapping.validationMessage { warnings.append(message) }
+        let warnings = resolved.contains(where: { $0.date == nil })
+            ? ["Some rows have an unreadable date — set a date on those rows before they can be saved."]
+            : []
         return ImportPreview(fileType: .csv, filename: filename, transactions: resolved, warnings: warnings, fatalMessage: nil)
     }
 
@@ -126,30 +131,56 @@ struct ImportService {
 
     @discardableResult
     func commit(preview: ImportPreview, defaultAccountId: UUID?) throws -> ImportBatch {
-        let rows = preview.transactions.filter { $0.isSelectedForImport && !$0.isDuplicate }
+        // Authoritative dedupe at commit time, using the *final* account each row
+        // will be saved with (per-row override, else the default).
+        let existing = (try? context.fetch(FetchDescriptor<Transaction>())) ?? []
+        var seen = DeduplicationService.signatures(for: existing)
+
+        var committable: [(row: ParsedTransaction, date: Date, accountId: UUID?)] = []
+        var skippedNoDate = 0
+        var skippedDuplicate = 0
+
+        for row in preview.transactions where row.isSelectedForImport && !row.isDuplicate {
+            // Never let a missing/unparseable date become "today".
+            guard let date = row.date else { skippedNoDate += 1; continue }
+            let finalAccount = row.resolvedAccountId ?? defaultAccountId
+            let signature = TransactionSignature(
+                date: date, amount: row.amount, merchant: row.displayName, accountId: finalAccount
+            )
+            if seen.contains(signature) { skippedDuplicate += 1; continue }
+            seen.insert(signature)
+            committable.append((row: row, date: date, accountId: finalAccount))
+        }
+
+        let total = preview.transactions.count
+        var notes: [String] = []
+        if skippedNoDate > 0 { notes.append("\(skippedNoDate) skipped for missing date") }
+        if skippedDuplicate > 0 { notes.append("\(skippedDuplicate) duplicate(s) skipped") }
+
         let batch = ImportBatch(
             filename: preview.filename,
             fileType: preview.fileType,
-            rowCount: rows.count,
-            status: rows.isEmpty ? .partial : .completed,
-            duplicateCount: preview.transactions.filter(\.isDuplicate).count,
-            needsReviewCount: rows.filter(\.needsReview).count
+            rowCount: committable.count,
+            status: committable.count == total ? .completed : .partial,
+            duplicateCount: preview.transactions.filter(\.isDuplicate).count + skippedDuplicate,
+            needsReviewCount: committable.filter { $0.row.needsReview }.count,
+            note: notes.joined(separator: "; ")
         )
         context.insert(batch)
 
         let source: TransactionSource = preview.fileType == .csv ? .csvImport : .pdfImport
-        for row in rows {
+        for entry in committable {
             let transaction = Transaction(
-                date: row.date ?? .now,
-                merchant: row.merchant,
-                narration: row.narration,
-                amount: row.amount,
-                type: row.type,
-                categoryId: row.resolvedCategoryId,
-                accountId: row.resolvedAccountId ?? defaultAccountId,
+                date: entry.date,
+                merchant: entry.row.merchant,
+                narration: entry.row.narration,
+                amount: entry.row.amount,
+                type: entry.row.type,
+                categoryId: entry.row.resolvedCategoryId,
+                accountId: entry.accountId,
                 source: source,
                 importId: batch.id,
-                isReviewed: !row.needsReview
+                isReviewed: !entry.row.needsReview && entry.row.resolvedCategoryId != nil
             )
             context.insert(transaction)
         }
