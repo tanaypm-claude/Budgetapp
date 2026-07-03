@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "F168F529-0EE7-4063-B4CC-8FCF0A022CE9",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:BudgetApp.xcodeproj",
+      "identifier" : "A10000000000000000000020",
+      "name" : "BudgetApp"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:BudgetApp.xcodeproj",
+        "identifier" : "A10000000000000000000030",
+        "name" : "BudgetAppTests"
+      }
+    }
+  ],
+  "version" : 1
+}

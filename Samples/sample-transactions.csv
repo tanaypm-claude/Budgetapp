@@ -1,0 +1,6 @@
+Date,Merchant,Description,Debit,Credit,Account,Category
+2026-06-01,Swiggy,UPI-SWIGGY-ORDER-9081,450,,Primary Bank,Food
+2026-06-02,Uber,UBER TRIP BKC,320,,Primary Bank,Travel
+2026-06-03,Salary,June salary,,150000,Primary Bank,Income
+2026-06-04,Rent Transfer,monthly rent,60000,,Primary Bank,Rent
+2026-06-05,Unknown Store,POS PURCHASE 7744,1299,,Primary Bank,

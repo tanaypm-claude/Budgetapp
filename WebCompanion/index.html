@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kosha</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <aside class="rail">
+    <div class="brand">
+      <img src="./assets/kosha-mark.svg" alt="Kosha mark">
+      <div>
+        <strong>Kosha</strong>
+        <span>Money studio</span>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+  </aside>
+
+  <main>
+    <section class="topbar">
+      <div>
+        <p id="month"></p>
+        <h1 id="title">Today</h1>
+      </div>
+      <button id="quickAdd" class="primary">New Entry</button>
+    </section>
+    <section id="view" class="view"></section>
+  </main>
+
+  <dialog id="transactionDialog">
+    <form method="dialog" id="transactionForm" class="dialog-form">
+      <h2>New Entry</h2>
+      <label>When <input name="date" type="date" required></label>
+      <label>Place or note <input name="merchant" required></label>
+      <label>Amount <input name="amount" type="number" step="0.01" required></label>
+      <label>Flow
+        <select name="type">
+          <option value="expense">Out</option>
+          <option value="income">In</option>
+          <option value="transfer">Transfer</option>
+        </select>
+      </label>
+      <label>Category <select name="categoryId" id="transactionCategory"></select></label>
+      <menu>
+        <button value="cancel">Cancel</button>
+        <button class="primary" value="save">Save</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>

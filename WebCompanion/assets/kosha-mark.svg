@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Kosha mark">
+  <rect x="8" y="8" width="144" height="144" rx="34" fill="#fbf6ec"/>
+  <path d="M34 118c12-10 27-15 46-15s34 5 46 15" fill="none" stroke="#0e0b09" stroke-width="9" stroke-linecap="round"/>
+  <path d="M36 92c7-28 22-47 44-57 22 10 37 29 44 57" fill="none" stroke="#0e0b09" stroke-width="10" stroke-linecap="round"/>
+  <path d="M57 89c6-15 14-25 23-30 9 5 17 15 23 30" fill="none" stroke="#750609" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="80" cy="92" r="12" fill="#750609"/>
+  <path d="M32 38h13M115 38h13M38 32v13M121 32v13M35 131h90" stroke="#0e0b09" stroke-width="5" stroke-linecap="round" opacity=".38"/>
+  <path d="M80 77v30M65 92h30" stroke="#fbf6ec" stroke-width="6" stroke-linecap="round"/>
+</svg>
